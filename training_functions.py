@@ -375,7 +375,8 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
     losses_x = AverageMeter()
     losses_u = AverageMeter()
     end = time.time()
-
+    
+    print('FixMatch Start!')
     bar = Bar('Training', max=args.val_iteration)
     labeled_train_iter = iter(labeled_trainloader)
     unlabeled_train_iter = iter(unlabeled_trainloader)
@@ -394,6 +395,14 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
             unlabeled_train_iter = iter(unlabeled_trainloader)
             (inputs_u, inputs_u2, inputs_u3), _, idx_u = unlabeled_train_iter.next()
 
+        """
+        * 같은 unlabeled 이미지에 대하여 서로 다른 세 가지 augmentation 적용
+          - inputs_u: Weakly-augmented images
+          - inputs_u2: Strongly-augmented images
+          - inputs_u3: Strongly-augmented images
+          - idx_u: 현재 배치에 포함된 unlabeled 이미지들의 indexes(총 unlabeled 이미지들 중에서)
+        """
+            
         # Measure data loading time
         data_time.update(time.time() - end)
         batch_size = inputs_x.size(0)
@@ -415,7 +424,13 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
             pseudo_orig_backup = pseudo_orig.clone()
 
             # Applying DARP
+            """
+            [핵심] DARP를 사용해 pseudo_orig을 바로 사용하지 않고, target distribution을 반영한 pseudo_refine을 사용
+              - 처음부터 바로 DARP를 사용하지 않고, 어느 정도(args.warm) 학습이 이루어진 뒤부터 적용
+              - 현재 배치에 포함된 unlabeled 이미지들의 index에 해당하는 pseudo_refine만 가져와 학습에 사용
+            """
             if args.darp and epoch > args.warm:
+                # num_iter(10번)에 한 번씩 pseudo_refine을 업데이트(현실적으로 매 batch마다 업데이트할 필요는 없음)
                 if batch_idx % args.num_iter == 0:
                     # Iterative normalization
                     targets_u, weights_u = estimate_pseudo(target_disb, pseudo_orig, args.num_class, args.alpha)
@@ -433,7 +448,7 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
 
                     # Select
                     targets_u = opt_res[idx_u].detach().cuda()
-                    pseudo_orig = pseudo_orig_backup
+                    pseudo_orig = pseudo_orig_backup # 계산 후에 원상복귀
                 else:
                     # Using previously saved pseudo-labels
                     targets_u = pseudo_refine[idx_u].cuda()
@@ -444,6 +459,7 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
         select_mask = max_p.ge(args.tau)
         select_mask = torch.cat([select_mask, select_mask], 0).float()
 
+        # labeled images(inputs_x), strongly-augmented images(inputs_u2, inputs_u3)을 이용해 모델 학습
         all_inputs = torch.cat([inputs_x, inputs_u2, inputs_u3], dim=0)
         all_targets = torch.cat([targets_x, p_hat, p_hat], dim=0)
 
