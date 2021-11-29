@@ -27,3 +27,8 @@ Applying DARP on the baseline algorithm
 #python train.py --gpu 0 --darp --est --alpha 2 --warm 200 --semi_method mix --dataset cifar10 --ratio 2 --num_max 1500 --imb_ratio_l 100 --imb_ratio_u 1  \
 --epoch 500 --val-iteration 500
 ```
+
+### DARP Test Script
+```
+python train.py --gpu 3 --darp --alpha 2 --warm -1 --semi_method fix --dataset cifar10 --ratio 2 --num_max 1500 --imb_ratio_l 100 --imb_ratio_u 1  --epoch 500 --val-iteration 500
+```
