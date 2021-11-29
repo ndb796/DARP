@@ -71,18 +71,23 @@ def main():
     U_SAMPLES_PER_CLASS = make_imb_data(args.ratio * args.num_max, args.num_class, args.imb_ratio_u)
     N_SAMPLES_PER_CLASS_T = torch.Tensor(N_SAMPLES_PER_CLASS)
 
+    print('N_SAMPLES_PER_CLASS:', N_SAMPLES_PER_CLASS)
+    print('U_SAMPLES_PER_CLASS:', U_SAMPLES_PER_CLASS)
+    print('N_SAMPLES_PER_CLASS_T:', N_SAMPLES_PER_CLASS_T)
+    
     print(args.out)
+    print('batch_size:', args.batch_size) # arguments.py
 
     if args.dataset == 'cifar10':
         print(f'==> Preparing imbalanced CIFAR-10')
-        train_labeled_set, train_unlabeled_set, test_set = get_cifar10('/home/jaehyung/data', N_SAMPLES_PER_CLASS,
+        train_labeled_set, train_unlabeled_set, test_set = get_cifar10('/home/dongbin/data', N_SAMPLES_PER_CLASS,
                                                                                U_SAMPLES_PER_CLASS, args.out)
     elif args.dataset == 'stl10':
         print(f'==> Preparing imbalanced STL-10')
-        train_labeled_set, train_unlabeled_set, test_set = get_stl10('/home/jaehyung/data', N_SAMPLES_PER_CLASS, args.out)
+        train_labeled_set, train_unlabeled_set, test_set = get_stl10('/home/dongbin/data', N_SAMPLES_PER_CLASS, args.out)
     elif args.dataset == 'cifar100':
         print(f'==> Preparing imbalanced CIFAR-100')
-        train_labeled_set, train_unlabeled_set, test_set = get_cifar100('/home/jaehyung/data', N_SAMPLES_PER_CLASS,
+        train_labeled_set, train_unlabeled_set, test_set = get_cifar100('/home/dongbin/data', N_SAMPLES_PER_CLASS,
                                                                                 U_SAMPLES_PER_CLASS, args.out)
     labeled_trainloader = data.DataLoader(train_labeled_set, batch_size=args.batch_size, shuffle=True, num_workers=4,
                                           drop_last=True)
@@ -138,6 +143,12 @@ def main():
     emp_distb_u = torch.ones(args.num_class) / args.num_class
     pseudo_orig = torch.ones(len(train_unlabeled_set.data), args.num_class) / args.num_class
     pseudo_refine = torch.ones(len(train_unlabeled_set.data), args.num_class) / args.num_class
+    
+    """
+    [핵심] 모든 unlabeled 이미지(수만 장)에 대하여 pseudo_orig과 pseudo_refine를 기록 및 갱신(trains 함수 내에서 갱신)
+      - pseudo_orig: 각 unlabeled 이미지에 대한 가장 최신의 prediction 결과(pseudo_label의 원본) 저장
+      - pseudo_refine: target distribution을 반영해 실질적으로 사용할 pseudo_label(이후에 hard label 선택해 학습 진행)
+    """
 
     # Main function
     for epoch in range(start_epoch, args.epochs):
@@ -154,7 +165,8 @@ def main():
         # Use the inferred distribution with labeled data
         else:
             target_disb = N_SAMPLES_PER_CLASS_T * len(train_unlabeled_set.data) / sum(N_SAMPLES_PER_CLASS)
-        
+            
+        print('target_disb:', target_disb)
         train_loss, train_loss_x, train_loss_u, emp_distb_u, pseudo_orig, pseudo_refine = trains(args, labeled_trainloader,
                                                                                                 unlabeled_trainloader,
                                                                                                 model, optimizer,
