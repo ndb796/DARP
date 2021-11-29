@@ -40,6 +40,10 @@ def validate(valloader, model, criterion, use_cuda, mode, num_class=10):
 
     classwise_correct = torch.zeros(num_class)
     classwise_num = torch.zeros(num_class)
+    
+    if use_cuda:
+        classwise_correct, classwise_num = classwise_correct.cuda(), classwise_num.cuda()
+    
     section_acc = torch.zeros(3)
 
     with torch.no_grad():
@@ -212,6 +216,8 @@ class WeightEMA(object):
     def step(self):
         one_minus_alpha = 1.0 - self.alpha
         for param, ema_param in zip(self.params, self.ema_params):
+            param = param.float()
+            ema_param = ema_param.float()
             # print(ema_param.mean())
             ema_param.mul_(self.alpha)
             ema_param.add_(param * one_minus_alpha)
