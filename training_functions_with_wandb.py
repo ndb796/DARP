@@ -403,7 +403,11 @@ def train_fix(args, labeled_trainloader, unlabeled_trainloader, model, optimizer
           - inputs_u3: Strongly-augmented images
           - idx_u: 현재 배치에 포함된 unlabeled 이미지들의 indexes(총 unlabeled 이미지들 중에서)
         """
-            
+
+        # print('inputs_u.shape:', inputs_u.shape) # [64, 3, 32, 32]
+        # print('inputs_u2.shape:', inputs_u2.shape) # [64, 3, 32, 32]
+        # print('inputs_u3.shape:', inputs_u3.shape) # [64, 3, 32, 32]
+
         # Measure data loading time
         data_time.update(time.time() - end)
         batch_size = inputs_x.size(0)
